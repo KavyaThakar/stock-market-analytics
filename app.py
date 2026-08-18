@@ -28,13 +28,6 @@ st.markdown("""
         color: #64748b;
         margin-bottom: 1.5rem;
     }
-    .metric-card {
-        background-color: #f8fafc;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid #e2e8f0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -77,8 +70,8 @@ available_tickers = df[df['Sector'].isin(selected_sectors)]['Ticker'].unique().t
 
 selected_tickers = st.sidebar.multiselect(
     "Select Stocks to Analyze",
-    options=all_tickers,
-    default=all_tickers
+    options=available_tickers,
+    default=available_tickers
 )
 
 if not selected_tickers:
@@ -94,7 +87,7 @@ filtered_df = df[df['Ticker'].isin(selected_tickers)].copy()
 st.markdown('<div class="main-title">📈 Stock Market Data Analytics Dashboard</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">'
-    'An interactive financial analytics dashboard built on 2 years of daily OHLCV market data for major National Stock Exchange (NSE) equities fetched via <code>yfinance</code>. '
+    'An interactive financial analytics dashboard built on 5 years of daily OHLCV market data for 41 major National Stock Exchange (NSE) equities fetched via <code>yfinance</code>. '
     'Use the sidebar controls to filter tickers, inspect relative return performance, evaluate sector trends, and explore cross-asset return correlations.'
     '</div>',
     unsafe_allow_html=True
@@ -103,7 +96,6 @@ st.markdown(
 # --------------------------------------------------------------------
 # KPI Metrics Row
 # --------------------------------------------------------------------
-# Compute overall metrics for filtered stocks
 start_prices = filtered_df.groupby('Ticker')['Close'].first()
 end_prices = filtered_df.groupby('Ticker')['Close'].last()
 total_returns = ((end_prices - start_prices) / start_prices) * 100.0
@@ -159,7 +151,6 @@ st.subheader("📊 Normalized Price Performance Trend (Indexed to 100)")
 st.caption("Normalizing close prices to 100 on the start date allows direct percentage-based performance comparison across stocks with different share price magnitudes.")
 
 pivot_close = filtered_df.pivot(index='Date', columns='Ticker', values='Close')
-# Normalize each ticker series to 100
 normalized_prices = pivot_close.div(pivot_close.iloc[0]) * 100.0
 normalized_df = normalized_prices.reset_index().melt(id_vars=['Date'], var_name='Ticker', value_name='Indexed_Price')
 
@@ -168,7 +159,7 @@ fig_trend = px.line(
     x='Date',
     y='Indexed_Price',
     color='Ticker',
-    title="2-Year Cumulative Stock Price Growth (Baseline = 100)",
+    title="5-Year Cumulative Stock Price Growth (Baseline = 100)",
     labels={"Indexed_Price": "Indexed Price (Base = 100)", "Date": "Date"},
     template="plotly_white"
 )
@@ -194,7 +185,7 @@ with chart_col1:
         color='Total_Return_Pct',
         color_continuous_scale=px.colors.diverging.RdYlGn,
         text_auto='.1f',
-        title="2-Year Overall Return (%) per Equity",
+        title="5-Year Overall Return (%) per Equity",
         template="plotly_white"
     )
     fig_returns.update_layout(coloraxis_showscale=False, yaxis_title="Total Return (%)")
@@ -230,7 +221,7 @@ corr_matrix = pivot_returns.corr()
 
 fig_heatmap = px.imshow(
     corr_matrix,
-    text_auto='.2f',
+    text_auto='.2f' if len(selected_tickers) <= 15 else False,
     color_continuous_scale='RdBu_r',
     zmin=-1.0,
     zmax=1.0,
@@ -238,7 +229,7 @@ fig_heatmap = px.imshow(
     template="plotly_white",
     aspect="auto"
 )
-fig_heatmap.update_layout(height=500)
+fig_heatmap.update_layout(height=550)
 st.plotly_chart(fig_heatmap, use_container_width=True)
 
 # --------------------------------------------------------------------
