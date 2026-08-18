@@ -5,6 +5,12 @@ A production-grade Python & SQL data analytics portfolio project that fetches, c
 ![Normalized Price Trend](charts/normalized_price_trend.png)
 
 ---
+## 🚀 Live Demo
+
+> Explore the live version of the project:
+
+**[🌐 Open Live Project](https://stock-market-analytics-sfzkn2hsesqesqw83evgfb.streamlit.app/
+)**
 
 ## 📌 Project Overview
 
