@@ -18,15 +18,16 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-title {
-        font-size: 2.3rem;
+        font-size: 2.2rem;
         font-weight: 700;
-        color: #1e293b;
+        color: #0f172a;
         margin-bottom: 0.2rem;
     }
     .sub-title {
-        font-size: 1.05rem;
-        color: #64748b;
+        font-size: 1.0rem;
+        color: #475569;
         margin-bottom: 1.5rem;
+        line-height: 1.5;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -68,10 +69,16 @@ selected_sectors = st.sidebar.multiselect(
 # Filter tickers based on sector selection
 available_tickers = df[df['Sector'].isin(selected_sectors)]['Ticker'].unique().tolist()
 
+# Smart default ticker selection (Top liquid benchmarks for clean initial presentation)
+preferred_defaults = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "BHARTIARTL.NS", "TRENT.NS"]
+default_selected_tickers = [t for t in preferred_defaults if t in available_tickers]
+if not default_selected_tickers:
+    default_selected_tickers = available_tickers[:5]
+
 selected_tickers = st.sidebar.multiselect(
     "Select Stocks to Analyze",
     options=available_tickers,
-    default=available_tickers
+    default=default_selected_tickers
 )
 
 if not selected_tickers:
@@ -87,8 +94,8 @@ filtered_df = df[df['Ticker'].isin(selected_tickers)].copy()
 st.markdown('<div class="main-title">📈 Stock Market Data Analytics Dashboard</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">'
-    'An interactive financial analytics dashboard built on 5 years of daily OHLCV market data for 41 major National Stock Exchange (NSE) equities fetched via <code>yfinance</code>. '
-    'Use the sidebar controls to filter tickers, inspect relative return performance, evaluate sector trends, and explore cross-asset return correlations.'
+    'An interactive financial analytics dashboard analyzing 5 years of daily OHLCV market data for major National Stock Exchange (NSE) equities fetched via <code>yfinance</code>. '
+    'Use the sidebar controls to filter tickers, compare relative growth, evaluate sector trends, and explore return correlations.'
     '</div>',
     unsafe_allow_html=True
 )
@@ -114,9 +121,9 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        label="Stocks Tracked",
+        label="Stocks Selected",
         value=f"{len(selected_tickers)} Equities",
-        delta=f"Out of {len(all_tickers)} Total"
+        delta=f"Out of {len(all_tickers)} Available"
     )
 
 with col2:
@@ -148,7 +155,7 @@ st.markdown("---")
 # Interactive Normalized Price Trend Chart (Base = 100)
 # --------------------------------------------------------------------
 st.subheader("📊 Normalized Price Performance Trend (Indexed to 100)")
-st.caption("Normalizing close prices to 100 on the start date allows direct percentage-based performance comparison across stocks with different share price magnitudes.")
+st.caption("Normalizing close prices to 100 on the start date allows direct percentage-based growth comparison across equities.")
 
 pivot_close = filtered_df.pivot(index='Date', columns='Ticker', values='Close')
 normalized_prices = pivot_close.div(pivot_close.iloc[0]) * 100.0
@@ -159,12 +166,25 @@ fig_trend = px.line(
     x='Date',
     y='Indexed_Price',
     color='Ticker',
-    title="5-Year Cumulative Stock Price Growth (Baseline = 100)",
     labels={"Indexed_Price": "Indexed Price (Base = 100)", "Date": "Date"},
     template="plotly_white"
 )
 fig_trend.add_hline(y=100, line_dash="dash", line_color="#64748b", annotation_text="Baseline (100)")
-fig_trend.update_layout(hovermode="x unified", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+
+# Clean Layout: Place legend on the right side with ample top margin to prevent overlapping title
+fig_trend.update_layout(
+    title=dict(text="Cumulative Stock Price Growth (Baseline = 100)", y=0.98, x=0.01),
+    margin=dict(t=50, b=40, l=50, r=120),
+    hovermode="x unified",
+    legend=dict(
+        orientation="v",
+        yanchor="top",
+        y=1.0,
+        xanchor="left",
+        x=1.02,
+        title=dict(text="Ticker")
+    )
+)
 st.plotly_chart(fig_trend, use_container_width=True)
 
 # --------------------------------------------------------------------
@@ -184,11 +204,15 @@ with chart_col1:
         y='Total_Return_Pct',
         color='Total_Return_Pct',
         color_continuous_scale=px.colors.diverging.RdYlGn,
-        text_auto='.1f',
-        title="5-Year Overall Return (%) per Equity",
+        text_auto='.1f' if len(selected_tickers) <= 15 else False,
         template="plotly_white"
     )
-    fig_returns.update_layout(coloraxis_showscale=False, yaxis_title="Total Return (%)")
+    fig_returns.update_layout(
+        title=dict(text="Overall Return (%) per Selected Equity", y=0.95),
+        coloraxis_showscale=False,
+        yaxis_title="Total Return (%)",
+        margin=dict(t=50, b=40, l=40, r=40)
+    )
     st.plotly_chart(fig_returns, use_container_width=True)
 
 with chart_col2:
@@ -204,32 +228,39 @@ with chart_col2:
         color='Avg_Daily_Return_Pct',
         color_continuous_scale=px.colors.sequential.Greens,
         text_auto='.4f',
-        title="Mean Daily Return (%) across Sectors",
         template="plotly_white"
     )
-    fig_sector.update_layout(coloraxis_showscale=False, yaxis_title="Avg Daily Return (%)")
+    fig_sector.update_layout(
+        title=dict(text="Mean Daily Return (%) across Sectors", y=0.95),
+        coloraxis_showscale=False,
+        yaxis_title="Avg Daily Return (%)",
+        margin=dict(t=50, b=40, l=40, r=40)
+    )
     st.plotly_chart(fig_sector, use_container_width=True)
 
 # --------------------------------------------------------------------
 # Cross-Asset Return Correlation Heatmap
 # --------------------------------------------------------------------
 st.subheader("🔥 Daily Returns Cross-Stock Correlation Heatmap")
-st.caption("Pearson correlation of daily returns for selected equities. Values close to +1.0 indicate strong positive co-movement.")
+st.caption("Pearson correlation matrix of daily returns for selected equities.")
 
 pivot_returns = filtered_df.pivot(index='Date', columns='Ticker', values='Daily_Return_Pct')
 corr_matrix = pivot_returns.corr()
 
 fig_heatmap = px.imshow(
     corr_matrix,
-    text_auto='.2f' if len(selected_tickers) <= 15 else False,
+    text_auto='.2f' if len(selected_tickers) <= 12 else False,
     color_continuous_scale='RdBu_r',
     zmin=-1.0,
     zmax=1.0,
-    title="Daily Return Correlation Matrix",
     template="plotly_white",
     aspect="auto"
 )
-fig_heatmap.update_layout(height=550)
+fig_heatmap.update_layout(
+    title=dict(text="Daily Return Correlation Matrix", y=0.96),
+    height=650 if len(selected_tickers) > 15 else 500,
+    margin=dict(t=50, b=50, l=50, r=50)
+)
 st.plotly_chart(fig_heatmap, use_container_width=True)
 
 # --------------------------------------------------------------------
