@@ -14,18 +14,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling
+# Custom Styling — theme-aware colors + Google Fonts for reliable rendering
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
     .main-title {
+        font-family: 'Inter', sans-serif;
         font-size: 2.2rem;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--text-color);
         margin-bottom: 0.2rem;
     }
     .sub-title {
+        font-family: 'Inter', sans-serif;
         font-size: 1.0rem;
-        color: #475569;
+        color: var(--text-color);
+        opacity: 0.75;
         margin-bottom: 1.5rem;
         line-height: 1.5;
     }
